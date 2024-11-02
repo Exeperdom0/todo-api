@@ -15,7 +15,7 @@ def deco(f):
         except Exception as e:
             print(str(e))
             return jsonify({"error":"Issue with token"})
-        return f()
+        return f(*args,**kwargs)
     return wrapper
 
 def openDb():
@@ -62,7 +62,7 @@ def login():
     else:
         return jsonify({"error":"Authentication failed"})
     
-@app.route("/todos", methods=["POST"])
+@app.route("/todos", methods=["POST"], endpoint="posttask")
 @deco
 def make_todo():
     
@@ -83,6 +83,26 @@ def make_todo():
         conn.commit()
         taskid = cursor.execute("SELECT id FROM tasks WHERE user = (?) and title = (?)", (name,title,)).fetchone()
         return jsonify({"id":taskid[0],"title":title,"description":description})
+    
+@app.route("/todos/<int:todo_id>", methods=["POST"], endpoint="updatetask")
+@deco
+def updateTask(todo_id):
+    token = request.headers["Authorization"].split(" ")[1]
+    name = jwt.decode(token,secret,algorithms=["HS256"])["name"]
+    
+    title,description = request.json["title"],request.json["description"]
+
+    conn = openDb()
+    cursor = conn.cursor()
+    
+    taskexists = cursor.execute("SELECT title FROM tasks WHERE user = (?) AND id = (?)", (name,todo_id,)).fetchone()
+    
+    if taskexists:
+        cursor.execute("UPDATE tasks SET title = (?), description = (?) WHERE user = (?) and id = (?)", (title,description,name,todo_id))
+        conn.commit()
+        return jsonify({"id":todo_id,"title":title,"description":description})
+    else:
+        return jsonify("Forbidden")
     
 if __name__ == "__main__":
     app.run(debug=True)
