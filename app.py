@@ -81,7 +81,8 @@ def make_todo():
     else:
         cursor.execute("INSERT INTO tasks (user,title,description) VALUES (?,?,?)", (name,title,description))
         conn.commit()
-        return jsonify("Success")
+        taskid = cursor.execute("SELECT id FROM tasks WHERE user = (?) and title = (?)", (name,title,)).fetchone()
+        return jsonify({"id":taskid[0],"title":title,"description":description})
     
 if __name__ == "__main__":
     app.run(debug=True)
