@@ -19,7 +19,7 @@ def deco(f):
     return wrapper
 
 def openDb():
-    with sqlite3.connect("todo eipiai/tododb") as conn:
+    with sqlite3.connect("tododb") as conn:
         return conn
 
 @app.route("/register", methods=["POST"])
