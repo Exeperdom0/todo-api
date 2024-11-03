@@ -55,7 +55,7 @@ def login():
     if userexists and bcrypt.checkpw(password.encode('utf-8'),userexists[2]):
         
         #token
-        expiration_time = datetime.utcnow() + timedelta(minutes=20)
+        expiration_time = datetime.utcnow() + timedelta(minutes=10)
         token = jwt.encode({"name":userexists[0],"exp":expiration_time},"key")
         return jsonify({"token":f"Bearer {token}"})
     
@@ -84,25 +84,37 @@ def make_todo():
         taskid = cursor.execute("SELECT id FROM tasks WHERE user = (?) and title = (?)", (name,title,)).fetchone()
         return jsonify({"id":taskid[0],"title":title,"description":description})
     
-@app.route("/todos/<int:todo_id>", methods=["POST"], endpoint="updatetask")
+@app.route("/todos/<int:todo_id>", methods=["PUT","DELETE"], endpoint="updatetask")
 @deco
 def updateTask(todo_id):
     token = request.headers["Authorization"].split(" ")[1]
     name = jwt.decode(token,secret,algorithms=["HS256"])["name"]
     
-    title,description = request.json["title"],request.json["description"]
-
     conn = openDb()
     cursor = conn.cursor()
     
-    taskexists = cursor.execute("SELECT title FROM tasks WHERE user = (?) AND id = (?)", (name,todo_id,)).fetchone()
+    if request.method == "PUT":
+        title,description = request.json["title"],request.json["description"]
+        
+        taskexists = cursor.execute("SELECT title FROM tasks WHERE user = (?) AND id = (?)", (name,todo_id,)).fetchone()
+        
+        if taskexists:
+            cursor.execute("UPDATE tasks SET title = (?), description = (?) WHERE user = (?) and id = (?)", (title,description,name,todo_id))
+            conn.commit()
+            return jsonify({"id":todo_id,"title":title,"description":description})
+        else:
+            return jsonify("Forbidden")
+    elif request.method == "DELETE":
+        taskexists = cursor.execute("SELECT user FROM tasks WHERE user = (?) AND id = (?)", (name,todo_id,)).fetchone()
+        
+        if taskexists:
+            cursor.execute("DELETE FROM tasks WHERE user = (?) and id = (?) ", (name,todo_id,))
+            conn.commit()
+            return jsonify({"status_code":204})
+        else:
+            return jsonify({"error":"A task with that id does not exists"})
     
-    if taskexists:
-        cursor.execute("UPDATE tasks SET title = (?), description = (?) WHERE user = (?) and id = (?)", (title,description,name,todo_id))
-        conn.commit()
-        return jsonify({"id":todo_id,"title":title,"description":description})
-    else:
-        return jsonify("Forbidden")
+
     
 if __name__ == "__main__":
     app.run(debug=True)
