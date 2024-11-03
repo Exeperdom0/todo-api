@@ -86,3 +86,7 @@ pip install -r requeriments.txt
   **URL:**/todos/<numero_de_pagina>/<limite_de_tareas_para_ver> 
 
   **Metodos:** Get
+
+**Cualquier sugerencia es mas que bienvenida**
+
+https://roadmap.sh/projects/todo-list-api
