@@ -84,7 +84,7 @@ def make_todo():
         taskid = cursor.execute("SELECT id FROM tasks WHERE user = (?) and title = (?)", (name,title,)).fetchone()
         return jsonify({"id":taskid[0],"title":title,"description":description})
     
-@app.route("/todos/<int:todo_id>", methods=["PUT","DELETE"], endpoint="updatetask")
+@app.route("/todos/<int:todo_id>", methods=["PUT","DELETE"], endpoint="updateordeletetask")
 @deco
 def updateTask(todo_id):
     token = request.headers["Authorization"].split(" ")[1]
@@ -114,7 +114,19 @@ def updateTask(todo_id):
         else:
             return jsonify({"error":"A task with that id does not exists"})
     
-
+@app.route("/todos/<int:page>/<int:limit>", methods=["GET"])
+@deco
+def watchtasks(page,limit):
+    token = request.headers["Authorization"].split(" ")[1]
+    name = jwt.decode(token,secret,algorithms=["HS256"])["name"]
     
+    conn = openDb()
+    cursor = conn.cursor()
+    
+    tasks = cursor.execute(f"SELECT id,title,description FROM tasks WHERE user = ? LIMIT ? OFFSET ?", (name,limit,(page-1)*limit)).fetchall()
+    for i,v in enumerate(tasks):
+        tasks[i] = {"id":v[0],"title":v[1],"description":v[2]}
+    return jsonify({"data":[i for i in tasks],"page":page,"limit":limit,"total":len(tasks)})
+        
 if __name__ == "__main__":
     app.run(debug=True)
